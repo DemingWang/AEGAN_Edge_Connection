@@ -13,7 +13,7 @@ This is Pytorch code for edge connection with GAN,in which a autoencoder structu
     * DIS
     * GAN
 * Template
-    *bin_contour
+    * bin_contour
 * Test_Image
     * input
     * output
