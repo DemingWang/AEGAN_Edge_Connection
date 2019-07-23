@@ -88,7 +88,7 @@ seq_drop_mask = iaa.Sequential([
 img_dir = ("./Template/bin_contour/")
 img_files = glob.glob(img_dir + "*.png")
 img_files.sort(key=lambda x:int(x[-6:-4]))
-print(img_files)
+print("template num:", len(img_files))
 
 # 读取噪声图片并进行扩充
 
