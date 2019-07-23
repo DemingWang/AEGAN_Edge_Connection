@@ -1,0 +1,3 @@
+./DefectDataset/gt/*
+./DefectDataset/noise/*
+./Model/*
