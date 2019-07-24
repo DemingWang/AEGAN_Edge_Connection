@@ -148,7 +148,7 @@ class AEGenerator(nn.Module):
 model = AEGenerator().cuda()
 # model.load_state_dict(torch.load('./model/aug/conv_aae_epoch_2990.pth'))
  
-checkpoint = torch.load('./Model/GAN/aegan_epoch_679.pth')
+checkpoint = torch.load('./Model/GAN/aegan_epoch_327.pth')
 # here, checkpoint is a dict with the keys you defined before
 model.load_state_dict(checkpoint['model'])
 
