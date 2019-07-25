@@ -1,4 +1,3 @@
-
 import torch
 from torch.utils.data import DataLoader
 from torchvision.datasets import MNIST
@@ -14,6 +13,9 @@ from torch.utils.data import Dataset, DataLoader
 import matplotlib.gridspec as gridspec
 import os
 from PIL import Image
+
+
+# os.environ['CUDA_VISIBLE_DEVICES'] = "0,1"
 
 if not os.path.exists('./GAN_Image'):
     os.mkdir('./GAN_Image')
@@ -81,7 +83,13 @@ class DefectDataset(Dataset):
 def showimg(images,count):
     images=images.to('cpu')
     images=images.detach().numpy()
-    images=images[[6, 12, 18, 24, 30, 36, 42, 48, 54, 60, 66, 72, 78, 84, 90, 96]]
+    imageNum = images.shape[0]
+    if imageNum > 72:
+        images=images[[6, 12, 18, 24, 30, 36, 42, 48, 54, 60, 66, 72, 78, 84, 90, 96]]
+    elif imageNum > 40:
+        images=images[[6, 12, 25, 18, 24, 30, 36, 39, 42, 48, 54, 57, 60, 63, 66, 67]]
+    else:
+        images=images[[1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31]]
     images=255*(0.5*images+0.5)
     images = images.astype(np.uint8)
     grid_length=int(np.ceil(np.sqrt(images.shape[0])))
@@ -110,7 +118,7 @@ def loadMNIST(batch_size):  #MNIST图片的大小是28*28
     testloader = DataLoader(testset, batch_size=batch_size, shuffle=False, num_workers=10)
     return trainset,testset,trainloader,testloader
 
-class AEGenerator(nn.Module):
+class AEGenerator(nn.Module): ##这里的网络结构实际上是参考了Implicit3D的结构
     def __init__(self):
         super(AEGenerator, self).__init__()
         self.encoder = nn.Sequential(
@@ -163,6 +171,71 @@ class AEGenerator(nn.Module):
         x = self.decoder(x)
         return x
 
+#AEGenerator_SK == AutoEncoderForGeneratorWithSmallKernel(3*3 Kernel),同时修改激活函数为:nn.LeakyRelu(0.2,True)
+class AEGenerator_SK(nn.Module):
+    def __init__(self):
+        super(AEGenerator_SK, self).__init__()
+        self.encoder = nn.Sequential( #input 1*256*256
+            nn.Conv2d(1,32, 3, stride=1, padding=1),
+            nn.LeakyReLU(0.2,True),# 32*128*128
+            nn.MaxPool2d((2,2)),
+
+            nn.Conv2d(32,32, 3, stride=1, padding=1),
+            nn.LeakyReLU(0.2,True),# 32*64*64
+            nn.MaxPool2d((2,2)),
+
+            nn.Conv2d(32,64, 3, stride=1, padding=1),
+            nn.LeakyReLU(0.2,True),# 64*32*32
+            nn.MaxPool2d((2,2)),
+
+            nn.Conv2d(64,64, 3, stride=1, padding=1),
+            nn.LeakyReLU(0.2,True),# 64*16*16
+            nn.MaxPool2d((2,2)),
+
+            nn.Conv2d(64,128, 3, stride=1, padding=1),
+            nn.LeakyReLU(0.2,True),# 128*8*8
+            nn.MaxPool2d((2,2))
+        )
+        self.fc1 = nn.Sequential(
+            nn.Linear(128*8*8, 128),
+            nn.ReLU(True)
+        )
+        self.fc2 = nn.Sequential(
+            nn.Linear(128, 128 * 8 * 8),
+            nn.ReLU(True)
+        )
+        self.decoder = nn.Sequential(
+            #nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+            nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True),
+            nn.ConvTranspose2d(128, 64, 3, stride=1, padding=1),  # b, 16, 5, 5
+            nn.ReLU(True), # 256 * 16 * 16
+
+            nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True),
+            nn.ConvTranspose2d(64, 64, 3, stride=1, padding=1),  # b, 16, 5, 5
+            nn.ReLU(True), # 256 * 32 * 32
+
+            
+            nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True),
+            nn.ConvTranspose2d(64, 32, 3, stride=1, padding=1),  # b, 16, 5, 5
+            nn.ReLU(True), # 128 * 64 * 64
+            
+            nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True),
+            nn.ConvTranspose2d(32, 32, 3, stride=1, padding=1),  # b, 16, 5, 5
+            nn.ReLU(True), # 64 * 128 * 128
+
+            nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True),
+            nn.ConvTranspose2d(32, 1, 3, stride=1, padding=1),  # b, 16, 5, 5
+            nn.Sigmoid() # 1 * 256 * 256            
+        )
+ 
+    def forward(self, x):
+        x = self.encoder(x)
+        x = x.view(x.size(0), -1)
+        x = self.fc1(x)
+        x = self.fc2(x)
+        x = x.view(x.size(0), 128, 8, 8)
+        x = self.decoder(x)
+        return x
 
 class discriminator(nn.Module):
     def __init__(self):
@@ -238,7 +311,7 @@ pixels = width * height * 1  # gray scale
 initEpoch = 260
 num_epochs = 3000
 num_gepochs = 5
-batch_size = 100
+batch_size = 80
 learning_rate = 1 * 1e-4
 useFineTune = True
 
@@ -247,16 +320,27 @@ if __name__ == "__main__":
     count = 0
     dataset = DefectDataset('./DefectDataset/noise', './DefectDataset/gt', width, height)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     
     ae_criterion = nn.BCELoss()
     d_criterion = nn.BCELoss()
 
     D = discriminator()  
-    G = AEGenerator()
+    G = AEGenerator_SK()
 
     D = D.cuda()
     G = G.cuda()
 
+    # model = Model()
+    if torch.cuda.device_count() > 1:
+        D = nn.DataParallel(D,device_ids=[0,1])
+        G = nn.DataParallel(G,device_ids=[0,1])
+    
+    D.to(device)
+    G.to(device)
+
+    
 
     summary(D,(1,256,256))
     summary(G,(1,256,256))
@@ -280,13 +364,14 @@ if __name__ == "__main__":
         # for (img, label) in trainloader:
         for (noise_img, gt_img) in dataloader:
             
+
             noise_img = Variable(noise_img).cuda()
             gt_img = Variable(gt_img).cuda()
 
             """ Update Discriminator """ 
 
-            real_label = Variable(torch.ones(batch_size,1)).cuda()
-            fake_label = Variable(torch.zeros(batch_size,1)).cuda()
+            real_label = Variable(torch.ones(gt_img.shape[0],1)).cuda()
+            fake_label = Variable(torch.zeros(gt_img.shape[0],1)).cuda()
 
             real_out = D(gt_img)
             d_loss_real = d_criterion(real_out,real_label) ### d_loss_real = log(D(x))
@@ -328,3 +413,4 @@ if __name__ == "__main__":
         count += 1
 
             
+
