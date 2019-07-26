@@ -8,7 +8,7 @@ import os
 import region 
 import math
 
-transformNum = 600
+transformNum = 5
 
 if not os.path.exists('./Template'):
     os.mkdir('./Template')
@@ -54,7 +54,7 @@ def calSobel(img):
     return dst
 # 对噪声图片进行旋转、放缩、平移和dropout
 seqNoise = iaa.Sequential([
-    iaa.Affine(translate_percent={"x": (-0.03, 0.03), "y": (-0.03, 0.03)},
+    iaa.Affine(translate_percent={"x": (-0.04, 0.04), "y": (-0.04, 0.04)},
         rotate=(-180, 180),
         scale=(0.8, 1.2)
     )
@@ -63,7 +63,7 @@ seqNoise = iaa.Sequential([
 
 #平移变换 对最初的模板图片就行随机的旋转、放缩和平移
 seqAffine = iaa.Sequential([
-    iaa.Affine(translate_percent={"x": (-0.03, 0.03), "y": (-0.03, 0.03)}
+    iaa.Affine(translate_percent={"x": (-0.04, 0.04), "y": (-0.04, 0.04)}
         # rotate=(-5, 5),
         # scale=(0.95, 1.05)
     )
@@ -81,7 +81,7 @@ seq_drop_mask = iaa.Sequential([
     # iaa.Fliplr(0.5), # 0.5 is the probability, horizontally flip 50% of the images
     # iaa.GaussianBlur(sigma=(0, 3.0)), # blur images with a sigma of 0 to 3.0
     # iaa.Invert(0.5),
-    iaa.CoarseDropout((0.001, 0.01), size_percent=(0.005,0.5))
+    iaa.CoarseDropout((0.1, 0.3), size_percent=(0.1,0.2))
 ])
 
 # Own Your Image Directory
@@ -90,18 +90,19 @@ img_files = glob.glob(img_dir + "*.png")
 img_files.sort(key=lambda x:int(x[-6:-4]))
 print("template num:", len(img_files))
 
-# 读取噪声图片并进行扩充
+# 读取背景噪声图片并进行扩充
 
 noise_img_dir = ("./DefectDataset/background/")
 noise_img_files = glob.glob(noise_img_dir + "*.png")
 noise_img_files.sort(key=lambda x:int(x[-6:-4]))
-print(noise_img_files)
+#print(noise_img_files)
 
 noise_img_list = []
 for imgID, noise_img_file in enumerate(noise_img_files):
     noise_img = Image.open(noise_img_file)
-    noise_img = noise_img.convert("L")
-    noise_img_np = np.asarray(noise_img)
+    noise_img_np =cv2.cvtColor(np.array(noise_img),cv2.COLOR_RGB2GRAY) 
+    # cv2.imshow("aug",noise_img_np)
+    # cv2.waitKey(0)  
     noise_img_np = np.expand_dims(noise_img_np,axis=2)
     noise_img_list.append(noise_img_np)
 
@@ -109,6 +110,7 @@ noise_img_np = np.array(noise_img_list)
 numOfRepeat = math.ceil(transformNum / len(noise_img_files))
 noise_img_repeat = np.repeat(noise_img_np, numOfRepeat, axis=0)
 noise_img_repeat = noise_img_repeat[:transformNum]
+noise_img_repeat = seq_drop_mask.augment_images(noise_img_repeat)
 
 
 
@@ -120,51 +122,47 @@ for tempID,img_file in enumerate(img_files):
     template_img = Image.open(img_file)
     template_img = template_img.convert("L")
     # 图像resize和随机裁剪 
-    print(type(template_img))
-    print(template_img.size)
+    # print(type(template_img))
+    # print(template_img.size)
     data = np.asarray(template_img)
-    print(type(data))
-    print(data.shape)
+    # print(type(data))
+    # print(data.shape)
     data = region.regionGenerate(data)
-    print("here")
-    print(type(data))
-    print(data.shape)
+    # print("here")
+    #print(type(data))
+    #print(data.shape)
     data = np.expand_dims(data,axis=0)
     data = np.expand_dims(data,axis=0)
-    print(type(data))
-    print(data.shape)
+    #print(type(data))
+    #print(data.shape)
     data = data.transpose(0,2,3,1)
-    print(type(data))
-    print(data.shape)
+    #print(type(data))
+    #print(data.shape)
     ori_gt = np.repeat(data, transformNum, axis=0)
-
-
     ori_gt = ori_gt.astype('uint8')
     
     ## 生成全白色的mask图像，进行黑色的dropout，而后反色得到白色的噪声
-    mask_img = ori_gt.copy()
-    mask_img[mask_img != 255] = 255
-    mask_drop = seq_drop_mask.augment_images(mask_img)
-    whitenoise = 255 - mask_drop
-
-    
+    # mask_img = ori_gt.copy()
+    # mask_img[mask_img != 255] = 255
+    # mask_drop = seq_drop_mask.augment_images(mask_img)
+    # whitenoise = 255 - mask_drop 
     pro_gt = seqAffine.augment_images(ori_gt)
-    print(type(pro_gt))
-    print(pro_gt.shape)
+    #print(type(pro_gt))
+    #print(pro_gt.shape)
     pro_gt[:,0:2,:,:] = 0
     pro_gt[:,-2:,:,:] = 0
     pro_gt[:,:,0:2,:] = 0
     pro_gt[:,:,-2:,:] = 0
 
     # for i,singleimg in enumerate(pro_gt):
-    #         # singleimg = singleimg.astype('uint8')
-    #         # cv2.imshow("aug",singleimg)
-    #         # cv2.waitKey(0)
-    #         # print(singleimg.shape)
-    #         singleimg = np.squeeze(singleimg)
-    #         # print(singleimg.shape)
-    #         sobelimg = calSobel(singleimg)
-    #         # cv2.imwrite("./DefectDataset/whitenoise/temp_{}_{}.png".format(tempID,"%04d"%i),sobelimg)
+            # singleimg = singleimg.astype('uint8')
+            # cv2.imshow("aug",singleimg)
+            # cv2.waitKey(0)
+            # print(singleimg.shape)
+            # singleimg = np.squeeze(singleimg)
+            # print(singleimg.shape)
+            # sobelimg = calSobel(singleimg)
+            # cv2.imwrite("./DefectDataset/whitenoise/temp_{}_{}.png".format(tempID,"%04d"%i),sobelimg)
 
 
     for i,singleimg in enumerate(pro_gt):
@@ -178,15 +176,17 @@ for tempID,img_file in enumerate(img_files):
 
     #生成平移变换后的图片并保存
     mid_pro_gt = pro_gt.copy()
-    mid_pro_gt[:,0:2,:,:] = 255
-    mid_pro_gt[:,-2:,:,:] = 255
-    mid_pro_gt[:,:,0:2,:] = 255
-    mid_pro_gt[:,:,-2:,:] = 255
+    # mid_pro_gt[:,0:2,:,:] = 255
+    # mid_pro_gt[:,-2:,:,:] = 255
+    # mid_pro_gt[:,:,0:2,:] = 255
+    # mid_pro_gt[:,:,-2:,:] = 255
 
     noise_img = seq_drop_gt.augment_images(mid_pro_gt)
-    print(type(noise_img))
-    print(noise_img.shape)
+    # print(type(noise_img))
+    # print(noise_img.shape)
     aug_noise_img_repeat = seqNoise.augment_images(noise_img_repeat)
+    thresh = (aug_noise_img_repeat < 255)
+    aug_noise_img_repeat[thresh] = 0
     noise_img = noise_img + aug_noise_img_repeat
     noise_img = np.clip(noise_img,0,255)
 

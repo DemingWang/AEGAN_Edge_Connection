@@ -10,10 +10,10 @@ from torchvision.datasets import MNIST
 
 import glob
 import numpy as np
-from sklearn.model_selection import train_test_split
+#from sklearn.model_selection import train_test_split
 from PIL import Image
 import matplotlib.pyplot as plt
-from SSIM_PIL import compare_ssim as ssim
+#from SSIM_PIL import compare_ssim as ssim
 #import pytorch_ssim
 import os
 from imgaug import augmenters as iaa
@@ -148,7 +148,7 @@ class AEGenerator(nn.Module):
 model = AEGenerator().cuda()
 # model.load_state_dict(torch.load('./model/aug/conv_aae_epoch_2990.pth'))
  
-checkpoint = torch.load('./Model/GAN/aegan_epoch_327.pth')
+checkpoint = torch.load('./Model/GAN/aegan_epoch_369.pth')
 # here, checkpoint is a dict with the keys you defined before
 model.load_state_dict(checkpoint['model'])
 

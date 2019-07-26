@@ -20,7 +20,7 @@ def regionGenerate(img):
     lenContours = len(contours)
     if lenContours == 2:
         isHoleExist = False
-    print(lenContours)
+    #print(lenContours)
     hierarchy0 = hierarchy[0]
     for i in range(lenContours):
         hierarchyI = hierarchy0[i]
@@ -36,7 +36,7 @@ def regionGenerate(img):
     print("mask channel: ",regionOut.shape)
     # cv2.imshow('region',regionOut)
     # cv2.waitKey(0)
-    cv2.imwrite("./template/bin_mask/bin_mask_{}.png".format("%02d"%i),regionOut)
+    cv2.imwrite("./Template/bin_mask/bin_mask_{}.png".format("%02d"%i),regionOut)
     return regionOut
     
 
