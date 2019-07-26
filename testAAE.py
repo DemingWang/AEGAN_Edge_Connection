@@ -144,11 +144,85 @@ class AEGenerator(nn.Module):
         x = x.view(x.size(0), 128, 8, 8)
         x = self.decoder(x)
         return x
+
+#AEGenerator_SK == AutoEncoderForGeneratorWithSmallKernel(3*3 Kernel),同时修改激活函数为:nn.LeakyRelu(0.2,True)
+class AEGenerator_SK(nn.Module):
+    def __init__(self):
+        super(AEGenerator_SK, self).__init__()
+        self.encoder = nn.Sequential( #input 1*256*256
+            nn.Conv2d(1,32, 3, stride=1, padding=1),
+            nn.LeakyReLU(0.2,True),# 32*128*128
+            nn.MaxPool2d((2,2)),
+
+            nn.Conv2d(32,32, 3, stride=1, padding=1),
+            nn.LeakyReLU(0.2,True),# 32*64*64
+            nn.MaxPool2d((2,2)),
+
+            nn.Conv2d(32,64, 3, stride=1, padding=1),
+            nn.LeakyReLU(0.2,True),# 64*32*32
+            nn.MaxPool2d((2,2)),
+
+            nn.Conv2d(64,64, 3, stride=1, padding=1),
+            nn.LeakyReLU(0.2,True),# 64*16*16
+            nn.MaxPool2d((2,2)),
+
+            nn.Conv2d(64,128, 3, stride=1, padding=1),
+            nn.LeakyReLU(0.2,True),# 128*8*8
+            nn.MaxPool2d((2,2))
+        )
+        self.fc1 = nn.Sequential(
+            nn.Linear(128*8*8, 128),
+            nn.ReLU(True)
+        )
+        self.fc2 = nn.Sequential(
+            nn.Linear(128, 128 * 8 * 8),
+            nn.ReLU(True)
+        )
+        self.decoder = nn.Sequential(
+            #nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+            nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True),
+            nn.ConvTranspose2d(128, 64, 3, stride=1, padding=1),  # b, 16, 5, 5
+            nn.ReLU(True), # 256 * 16 * 16
+
+            nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True),
+            nn.ConvTranspose2d(64, 64, 3, stride=1, padding=1),  # b, 16, 5, 5
+            nn.ReLU(True), # 256 * 32 * 32
+
+            
+            nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True),
+            nn.ConvTranspose2d(64, 32, 3, stride=1, padding=1),  # b, 16, 5, 5
+            nn.ReLU(True), # 128 * 64 * 64
+            
+            nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True),
+            nn.ConvTranspose2d(32, 32, 3, stride=1, padding=1),  # b, 16, 5, 5
+            nn.ReLU(True), # 64 * 128 * 128
+
+            nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True),
+            nn.ConvTranspose2d(32, 1, 3, stride=1, padding=1),  # b, 16, 5, 5
+            nn.Sigmoid() # 1 * 256 * 256            
+        )
  
-model = AEGenerator().cuda()
+    def forward(self, x):
+        x = self.encoder(x)
+        x = x.view(x.size(0), -1)
+        x = self.fc1(x)
+        x = self.fc2(x)
+        x = x.view(x.size(0), 128, 8, 8)
+        x = self.decoder(x)
+        return x
+ 
+model = AEGenerator_SK().cuda()
+
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+# model = Model()
+#if torch.cuda.device_count() > 1:
+model = nn.DataParallel(model,device_ids=[0])
+
+model.to(device)
+
 # model.load_state_dict(torch.load('./model/aug/conv_aae_epoch_2990.pth'))
  
-checkpoint = torch.load('./Model/GAN/aegan_epoch_369.pth')
+checkpoint = torch.load('./Model_old/20190726/aegan_epoch_317.pth')
 # here, checkpoint is a dict with the keys you defined before
 model.load_state_dict(checkpoint['model'])
 
@@ -169,7 +243,7 @@ noise_imgs = noise_imgs.transpose(0,2,3,1)
 
 for i,singleimg in enumerate(output_imgs):
 
-    cv2.imwrite("./Test_Image/output/{}_denoise.png".format(i),singleimg)
+    cv2.imwrite("./Test_Image/output/{}_noise_de.png".format(i),singleimg)
     cv2.imwrite("./Test_Image/output/{}_noise.png".format(i),noise_imgs[i])
     
 
