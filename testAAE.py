@@ -40,29 +40,45 @@ seq = iaa.Sequential([
     iaa.CoarseDropout((0.1, 0.3), size_percent=(0.1,0.2))
 ])
 
-
-
-img_dir = ("./Test_Image/input/")
-img_files = glob.glob(img_dir + "*.png")
-img_files.sort(key=lambda x:int(x[-6:-4]))
-print(img_files)
-
-
-# Load Image
-# AutoEncoder does not have to label data
 x = []
-transformNum = 100
-#读取图片
-for i, f in enumerate(img_files):
-    img = Image.open(f)
-    img = img.convert("L")
-    # 图像resize和随机裁剪 
-    print(type(img))
-    print(img.size)
-    if(img.width != width or img.height != height):
+Testfolder = False
+#如果是读取某一个文件夹里的
+if(Testfolder):
+    img_dir = ("./Test_Image/input/")
+    img_files = glob.glob(img_dir + "*.png")
+    img_files.sort(key=lambda x:int(x[-6:-4]))
+    print(img_files)
+
+    # Load Image
+    # AutoEncoder does not have to label data
+
+    #读取图片
+    for i, f in enumerate(img_files):
+        img = Image.open(f)
+        img = img.convert("L")
+        # 图像resize和随机裁剪 
+        print(type(img))
+        print(img.size)
+        if(img.width != width or img.height != height):
             img = img.resize((width, height), 1)
-    data = np.asarray(img)
-    x.append(data)
+        data = np.asarray(img)
+        x.append(data)
+else:
+    #如果是读取DefectDataset/noise文件夹下的某些图片
+    img_dir = ("./DefectDataset/noise/")
+    for tempID in range(0,27):
+        selectNum = 0
+        img_filename = img_dir+"temp_{}_{}.png".format(tempID,"%04d"%selectNum)
+        print("Image Filename: ",img_filename)
+        img = Image.open(img_filename)
+        img = img.convert("L")
+        # 图像resize和随机裁剪 
+        print(type(img))
+        print(img.size)
+        if(img.width != width or img.height != height):
+            img = img.resize((width, height), 1)
+        data = np.asarray(img)
+        x.append(data)
 
 x_truth = np.reshape(x, (len(x), width, height, 1))  # adapt this if using `channels_first` image data format
 
@@ -211,7 +227,7 @@ class AEGenerator_SK(nn.Module):
         x = self.decoder(x)
         return x
  
-model = AEGenerator_SK().cuda()
+model = AEGenerator().cuda()
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 # model = Model()
@@ -222,7 +238,7 @@ model.to(device)
 
 # model.load_state_dict(torch.load('./model/aug/conv_aae_epoch_2990.pth'))
  
-checkpoint = torch.load('./Model_old/20190726/aegan_epoch_317.pth')
+checkpoint = torch.load('./Model_old/20190731/aegan_epoch_197.pth')
 # here, checkpoint is a dict with the keys you defined before
 model.load_state_dict(checkpoint['model'])
 

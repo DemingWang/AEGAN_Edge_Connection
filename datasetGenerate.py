@@ -8,7 +8,7 @@ import os
 import region 
 import math
 
-transformNum = 5
+transformNum = 600
 
 if not os.path.exists('./Template'):
     os.mkdir('./Template')

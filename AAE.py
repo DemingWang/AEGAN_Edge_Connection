@@ -1,3 +1,4 @@
+
 import torch
 from torch.utils.data import DataLoader
 from torchvision.datasets import MNIST
@@ -29,6 +30,15 @@ if not os.path.exists('./Model/GAN'):
 if not os.path.exists('./Model/DIS'):
     os.mkdir('./Model/DIS')
 
+#加入权重初始化函数
+def weights_init(m):
+    classname = m.__class__.__name__
+    if classname.find('Conv2d') != -1:
+        nn.init.xavier_normal_(m.weight.data)
+        nn.init.constant_(m.bias.data, 0.0)
+    elif classname.find('Linear') != -1:
+        nn.init.xavier_normal_(m.weight.data)
+        nn.init.constant_(m.bias.data, 0.0)
 
 class DefectDataset(Dataset):
   
@@ -96,7 +106,6 @@ def showimg(images,count):
     plt.figure(figsize=(4,4))
     width = images.shape[2]
     gs = gridspec.GridSpec(grid_length,grid_length,wspace=0,hspace=0)
-    print(images.shape)
     for i, img in enumerate(images):
         ax = plt.subplot(gs[i])
         ax.set_xticklabels([])
@@ -308,16 +317,18 @@ width = 256
 height = 256
 pixels = width * height * 1  # gray scale
 
-initEpoch = 260
+#此处需要修改
+initEpoch =165
 num_epochs = 3000
 num_gepochs = 5
-batch_size = 80
+batch_size = 256
 learning_rate = 1 * 1e-4
 useFineTune = True
-
+multiGPU = True
 
 if __name__ == "__main__":
-    count = 0
+    count = initEpoch
+    
     dataset = DefectDataset('./DefectDataset/noise', './DefectDataset/gt', width, height)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
@@ -327,18 +338,22 @@ if __name__ == "__main__":
     d_criterion = nn.BCELoss()
 
     D = discriminator()  
-    G = AEGenerator_SK()
+    G = AEGenerator()
 
     D = D.cuda()
     G = G.cuda()
 
     # model = Model()
-    if torch.cuda.device_count() > 1:
-        D = nn.DataParallel(D,device_ids=[0,1])
-        G = nn.DataParallel(G,device_ids=[0,1])
+    if(multiGPU): #if torch.cuda.device_count() > 1:
+        D = nn.DataParallel(D,device_ids=[0])
+        G = nn.DataParallel(G,device_ids=[0])
+    else:
+        D = nn.DataParallel(D,device_ids=[0])
+        G = nn.DataParallel(G,device_ids=[0])
     
     D.to(device)
     G.to(device)
+
 
     
 
@@ -359,8 +374,20 @@ if __name__ == "__main__":
         'opt': d_optimizer.state_dict()
     }
 
+    if(useFineTune):
+        checkpoint_d = torch.load('./Model/DIS/aegan_epoch_159.pth')
+        checkpoint_g = torch.load('./Model/GAN/aegan_epoch_159.pth')
+        # here, checkpoint is a dict with the keys you defined before
+        D.load_state_dict(checkpoint_d['model'])
+        d_optimizer.load_state_dict(checkpoint_d['opt'])
+        G.load_state_dict(checkpoint_g['model'])
+        g_optimizer.load_state_dict(checkpoint_g['opt'])
+    else:
+        D.apply(weights_init)
+        G.apply(weights_init)
 
-    for i in range(num_epochs):
+
+    for i in range(initEpoch, initEpoch+num_epochs):
         # for (img, label) in trainloader:
         for (noise_img, gt_img) in dataloader:
             
@@ -413,4 +440,3 @@ if __name__ == "__main__":
         count += 1
 
             
-
