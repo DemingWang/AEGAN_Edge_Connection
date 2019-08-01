@@ -245,6 +245,64 @@ class AEGenerator_SK(nn.Module):
         x = x.view(x.size(0), 128, 8, 8)
         x = self.decoder(x)
         return x
+#带有分类器的Autoencoder
+class AEGeneratorWithClassifier(nn.Module): ##这里的网络结构实际上是参考了Implicit3D的结构
+    def __init__(self):
+        super(AEGeneratorWithClassifier, self).__init__()
+        self.encoder = nn.Sequential(
+            nn.Conv2d(1,32, 5, stride=2, padding=2),
+            nn.ReLU(True),# 64*128*128
+
+            nn.Conv2d(32,32, 5, stride=2, padding=2),
+            nn.ReLU(True),# 32*64*64
+
+            nn.Conv2d(32,64, 5, stride=2, padding=2),
+            nn.ReLU(True),# 64*32*32
+
+            nn.Conv2d(64,64, 5, stride=2, padding=2),
+            nn.ReLU(True),# 64*16*16
+
+            nn.Conv2d(64,128, 5, stride=2, padding=2),
+            nn.ReLU(True)# 128*8*8
+        )
+        self.relu = nn.ReLU(True)
+        self.fc1 = nn.Sequential(
+            nn.Linear(128*8*8, 128)
+        )
+        self.fc2 = nn.Sequential(
+            nn.Linear(128, 128 * 8 * 8),
+            nn.ReLU(True)
+        )
+        self.decoder = nn.Sequential(
+            nn.ConvTranspose2d(128, 64, 4, stride=2, padding=1),  # b, 16, 5, 5
+            nn.ReLU(True), # 256 * 16 * 16
+
+            nn.ConvTranspose2d(64, 64, 4, stride=2, padding=1),  # b, 16, 5, 5
+            nn.ReLU(True), # 256 * 32 * 32
+
+            nn.ConvTranspose2d(64, 32, 4, stride=2, padding=1),  # b, 16, 5, 5
+            nn.ReLU(True), # 128 * 64 * 64
+
+            nn.ConvTranspose2d(32, 32, 4, stride=2, padding=1),  # b, 16, 5, 5
+            nn.ReLU(True), # 64 * 128 * 128
+
+            nn.ConvTranspose2d(32, 1, 4, stride=2, padding=1),  # b, 16, 5, 5
+            nn.Sigmoid() # 1 * 256 * 256            
+        )
+ 
+    def forward(self, x):
+        x = self.encoder(x)
+        x = x.view(x.size(0), -1)
+        x = self.fc1(x)
+        label = x[0:27]
+        code = x[27:]
+        label = nn.Softmax(label)
+        code = self.relu(code)
+        x = [label,code]
+        x = self.fc2(x)
+        x = x.view(x.size(0), 128, 8, 8)
+        x = self.decoder(x)
+        return x,label
 
 class discriminator(nn.Module):
     def __init__(self):
@@ -318,12 +376,12 @@ height = 256
 pixels = width * height * 1  # gray scale
 
 #此处需要修改
-initEpoch =165
+initEpoch =0
 num_epochs = 3000
 num_gepochs = 5
-batch_size = 256
+batch_size = 80
 learning_rate = 1 * 1e-4
-useFineTune = True
+useFineTune = False
 multiGPU = True
 
 if __name__ == "__main__":
@@ -353,8 +411,6 @@ if __name__ == "__main__":
     
     D.to(device)
     G.to(device)
-
-
     
 
     summary(D,(1,256,256))
@@ -394,6 +450,9 @@ if __name__ == "__main__":
 
             noise_img = Variable(noise_img).cuda()
             gt_img = Variable(gt_img).cuda()
+
+            """ Update Classifier """
+
 
             """ Update Discriminator """ 
 

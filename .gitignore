@@ -2,3 +2,4 @@ DefectDataset/gt/*
 DefectDataset/noise/*
 Model/*
 Model_old/*
+Model_new/*

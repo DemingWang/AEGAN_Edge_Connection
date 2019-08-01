@@ -171,7 +171,7 @@ for tempID,img_file in enumerate(img_files):
         singleimg = np.squeeze(singleimg)
         sobelimg = calSobel(singleimg)
         pro_gt[i] = sobelimg.copy()
-        cv2.imwrite("./DefectDataset/gt/temp_{}_{}.png".format(tempID,"%04d"%i),pro_gt[i])
+        cv2.imwrite("./DefectDataset/gt/temp_{}_{}.png".format("%02d"%tempID,"%04d"%i),pro_gt[i])
 
 
     #生成平移变换后的图片并保存
@@ -193,5 +193,5 @@ for tempID,img_file in enumerate(img_files):
     for i,singleimg in enumerate(noise_img):
         # singleimg = singleimg.astype('uint8')
         # cv2.imshow("aug",singleimg)
-        cv2.imwrite("./DefectDataset/noise/temp_{}_{}.png".format(tempID,"%04d"%i),singleimg)
+        cv2.imwrite("./DefectDataset/noise/temp_{}_{}.png".format("%02d"%tempID,"%04d"%i),singleimg)
 

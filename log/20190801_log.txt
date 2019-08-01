@@ -1,0 +1,9 @@
+### date: 2019.08.01
+### 修改内容/测试内容
+- 修改了网络结构，新结构在AAEWithClassifier.py
+- 训练过程中输出模型会保存在Model_new/encoder Model_new/decoder Model_new/discriminator
+### 训练次数和loss
+200次，模型在log/20190801/
+### 结果
+1.在训练数据集上表现良好
+2.需要实际数据测试
