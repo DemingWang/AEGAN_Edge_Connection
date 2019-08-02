@@ -10,20 +10,36 @@ import math
 
 transformNum = 600
 
-if not os.path.exists('./Template'):
-    os.mkdir('./Template')
+# You can use this flag to choose single or multi mode for dataset generation
+SingleModel = True
 
-if not os.path.exists('./DefectDataset'):
-    os.mkdir('./DefectDataset')
+# mkdir 
+if not os.path.exists('../Template'):
+    os.mkdir('../Template')
 
-if not os.path.exists('./DefectDataset/gt'):
-    os.mkdir('./DefectDataset/gt')
+if not os.path.exists('../DefectDataset'):
+    os.mkdir('../DefectDataset')
 
-if not os.path.exists('./DefectDataset/noise'):
-    os.mkdir('./DefectDataset/noise')
+if not os.path.exists('../DefectDataset/Single'):
+    os.mkdir('../DefectDataset/Single')
 
-if not os.path.exists('./DefectDataset/background'):
-    os.mkdir('./DefectDataset/background')
+if not os.path.exists('../DefectDataset/Multi'):
+    os.mkdir('../DefectDataset/Multi')
+
+if not os.path.exists('../DefectDataset/Single/gt'):
+    os.mkdir('../DefectDataset/Single/gt')
+
+if not os.path.exists('../DefectDataset/Single/noise'):
+    os.mkdir('../DefectDataset/Single/noise')
+
+if not os.path.exists('../DefectDataset/Multi/gt'):
+    os.mkdir('../DefectDataset/Multi/gt')
+
+if not os.path.exists('../DefectDataset/Multi/noise'):
+    os.mkdir('../DefectDataset/Multi/noise')
+
+if not os.path.exists('../DefectDataset/background'):
+    os.mkdir('../DefectDataset/background')
 
 
 def calSobel(img):
@@ -85,14 +101,14 @@ seq_drop_mask = iaa.Sequential([
 ])
 
 # Own Your Image Directory
-img_dir = ("./Template/bin_contour/")
+img_dir = ("../Template/bin_contour/")
 img_files = glob.glob(img_dir + "*.png")
 img_files.sort(key=lambda x:int(x[-6:-4]))
 print("template num:", len(img_files))
 
 # 读取背景噪声图片并进行扩充
 
-noise_img_dir = ("./DefectDataset/background/")
+noise_img_dir = ("../DefectDataset/background/")
 noise_img_files = glob.glob(noise_img_dir + "*.png")
 noise_img_files.sort(key=lambda x:int(x[-6:-4]))
 #print(noise_img_files)
@@ -164,6 +180,9 @@ for tempID,img_file in enumerate(img_files):
             # sobelimg = calSobel(singleimg)
             # cv2.imwrite("./DefectDataset/whitenoise/temp_{}_{}.png".format(tempID,"%04d"%i),sobelimg)
 
+    if(not SingleModel):
+        if not os.path.exists("../DefectDataset/Multi/gt/{}".format("%02d"%tempID)):
+            os.mkdir("../DefectDataset/Multi/gt/{}".format("%02d"%tempID))
 
     for i,singleimg in enumerate(pro_gt):
         # singleimg = singleimg.astype('uint8')
@@ -171,7 +190,10 @@ for tempID,img_file in enumerate(img_files):
         singleimg = np.squeeze(singleimg)
         sobelimg = calSobel(singleimg)
         pro_gt[i] = sobelimg.copy()
-        cv2.imwrite("./DefectDataset/gt/temp_{}_{}.png".format("%02d"%tempID,"%04d"%i),pro_gt[i])
+        if(SingleModel):
+            cv2.imwrite("../DefectDataset/Single/gt/temp_{}_{}.png".format("%02d"%tempID,"%04d"%i),pro_gt[i])
+        else:
+            cv2.imwrite("../DefectDataset/Multi/gt/{}/temp_{}_{}.png".format("%02d"%tempID,"%02d"%tempID,"%04d"%i),pro_gt[i])
 
 
     #生成平移变换后的图片并保存
@@ -190,8 +212,14 @@ for tempID,img_file in enumerate(img_files):
     noise_img = noise_img + aug_noise_img_repeat
     noise_img = np.clip(noise_img,0,255)
 
+    if(not SingleModel):
+        if not os.path.exists("../DefectDataset/Multi/noise/{}".format("%02d"%tempID)):
+            os.mkdir("../DefectDataset/Multi/noise/{}".format("%02d"%tempID))
     for i,singleimg in enumerate(noise_img):
         # singleimg = singleimg.astype('uint8')
         # cv2.imshow("aug",singleimg)
-        cv2.imwrite("./DefectDataset/noise/temp_{}_{}.png".format("%02d"%tempID,"%04d"%i),singleimg)
+        if(SingleModel):
+            cv2.imwrite("../DefectDataset/Single/noise/temp_{}_{}.png".format("%02d"%tempID,"%04d"%i),singleimg)
+        else:
+            cv2.imwrite("../DefectDataset/Multi/noise/{}/temp_{}_{}.png".format("%02d"%tempID,"%02d"%tempID,"%04d"%i),singleimg)
 

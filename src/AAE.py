@@ -17,30 +17,21 @@ from PIL import Image
 
 
 # os.environ['CUDA_VISIBLE_DEVICES'] = "0,1"
+# According to the folder structure, the generator(autoencoder-decoder) training mode will be saved in ./Model/GAN and 
+# the discriminator training model will be saved in ./Model/DIS
 
-if not os.path.exists('./GAN_Image'):
-    os.mkdir('./GAN_Image')
+if not os.path.exists('../GAN_Image'):
+    os.mkdir('../GAN_Image')
 
-if not os.path.exists('./Model'):
-    os.mkdir('./Model')
+if not os.path.exists('../Model'):
+    os.mkdir('../Model')
 
-if not os.path.exists('./Model/GAN'):
-    os.mkdir('./Model/GAN')
+if not os.path.exists('../Model/GAN'):
+    os.mkdir('../Model/GAN')
 
-if not os.path.exists('./Model/DIS'):
-    os.mkdir('./Model/DIS')
+if not os.path.exists('../Model/DIS'):
+    os.mkdir('../Model/DIS')
 
-if not os.path.exists('./Model_new'):
-    os.mkdir('./Model_new')
-
-if not os.path.exists('./Model_new/encoder'):
-    os.mkdir('./Model_new/encoder')
-
-if not os.path.exists('./Model_new/encoder'):
-    os.mkdir('./Model_new/decoder')
-
-if not os.path.exists('./Model_new/encoder'):
-    os.mkdir('./Model_new/discriminator')
 #加入权重初始化函数
 def weights_init(m):
     classname = m.__class__.__name__
@@ -71,14 +62,7 @@ class DefectDataset(Dataset):
     def __getitem__(self, idx):
         sample_path = self.sample_files[idx]
         label_path = self.label_files[idx]
-        # print("sample_path: ",sample_path)
-        # print("label_path: ",label_path)
-        fpath,fname = os.path.split(label_path)
-        tempID = [int(fname[5:7])]
-        # print("tempID: ",tempID)
-        tempID = torch.LongTensor(tempID)
-        label_onehot = torch.zeros(27).scatter_(0,tempID,1)
-        # print("label_onehot: ",label_onehot)
+
         img = Image.open(sample_path)
         img = img.convert("L")
         if(img.width != self.width or img.height != self.height):
@@ -99,14 +83,13 @@ class DefectDataset(Dataset):
         data = np.expand_dims(data,axis=0)
         label = data.copy()
         label = torch.from_numpy(label)
-        # print(label.shape)
 
         # if self.augment:
         #     sample = self.augment(sample)
         #     label = self.augment(label)
 
         # print("label shape: ",label.shape)
-        return sample, label, label_onehot     # 将读取到的图像变成tensor再传出
+        return sample, label     # 将读取到的图像变成tensor再传出
 
 
 def showimg(images,count):
@@ -135,7 +118,7 @@ def showimg(images,count):
         plt.tight_layout()
 #     print('showing...')
     plt.tight_layout()
-    plt.savefig('./GAN_Image/{}.png'.format(count), bbox_inches = 'tight')
+    plt.savefig('../GAN_Image/{}.png'.format(count), bbox_inches = 'tight')
 
 def loadMNIST(batch_size):  #MNIST图片的大小是28*28
     trans_img=transforms.Compose([transforms.ToTensor()])
@@ -323,79 +306,6 @@ class AEGeneratorWithClassifier(nn.Module): ##这里的网络结构实际上是�
         x = self.decoder(x)
         return x,label
 
-class EncoderWithClassifier(nn.Module):
-    def __init__(self):
-        super(EncoderWithClassifier, self).__init__()
-        self.encoder = nn.Sequential(
-            nn.Conv2d(1,32, 5, stride=2, padding=2),
-            nn.ReLU(True),# 64*128*128
-
-            nn.Conv2d(32,32, 5, stride=2, padding=2),
-            nn.ReLU(True),# 32*64*64
-
-            nn.Conv2d(32,64, 5, stride=2, padding=2),
-            nn.ReLU(True),# 64*32*32
-
-            nn.Conv2d(64,64, 5, stride=2, padding=2),
-            nn.ReLU(True),# 64*16*16
-
-            nn.Conv2d(64,128, 5, stride=2, padding=2),
-            nn.ReLU(True)# 128*8*8
-        )
-        self.fc1 = nn.Sequential(
-            nn.Linear(128*8*8, 128)
-        )
-        self.fc2 = nn.Sequential(
-            nn.Linear(128,27),
-            nn.Softmax()
-        )
-        self.fc3 = nn.Sequential(
-            nn.Linear(128,101),
-            nn.ReLU(True)
-        )
-        self.relu = nn.ReLU(False)
-        self.softmax = nn.Softmax()
-
-    def forward(self, x):
-        x = self.encoder(x)
-        x = x.view(x.size(0), -1)
-        x = self.fc1(x)
-        label = self.fc2(x)
-        code = self.fc3(x)
-        x = torch.cat((label,code),1)
-        return x,label
-
-
-class Decoder(nn.Module): ##这里的网络结构实际上是参考了Implicit3D的结构
-    def __init__(self):
-        super(Decoder, self).__init__()
-        self.fc2 = nn.Sequential(
-            nn.Linear(128, 128 * 8 * 8),
-            nn.ReLU(True)
-        )
-        self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(128, 64, 4, stride=2, padding=1),  # b, 16, 5, 5
-            nn.ReLU(True), # 256 * 16 * 16
-
-            nn.ConvTranspose2d(64, 64, 4, stride=2, padding=1),  # b, 16, 5, 5
-            nn.ReLU(True), # 256 * 32 * 32
-
-            nn.ConvTranspose2d(64, 32, 4, stride=2, padding=1),  # b, 16, 5, 5
-            nn.ReLU(True), # 128 * 64 * 64
-
-            nn.ConvTranspose2d(32, 32, 4, stride=2, padding=1),  # b, 16, 5, 5
-            nn.ReLU(True), # 64 * 128 * 128
-
-            nn.ConvTranspose2d(32, 1, 4, stride=2, padding=1),  # b, 16, 5, 5
-            nn.Sigmoid() # 1 * 256 * 256            
-        )
- 
-    def forward(self, x):
-        x = self.fc2(x)
-        x = x.view(x.size(0), 128, 8, 8)
-        x = self.decoder(x)
-        return x
-
 class discriminator(nn.Module):
     def __init__(self):
         super(discriminator,self).__init__()
@@ -434,6 +344,32 @@ class discriminator(nn.Module):
         x = self.fc(x)
         return x
 
+class generator(nn.Module):
+    def __init__(self, input_size, num_features):
+        super(generator,self).__init__()
+        self.fc = nn.Linear(input_size,num_features)
+        self.br = nn.Sequential(
+            nn.BatchNorm2d(1),
+            nn.ReLU(True)
+        )
+        self.gen = nn.Sequential(
+            nn.Conv2d(1,50,3,stride=1,padding=1),
+            nn.BatchNorm2d(50),
+            nn.ReLU(True),
+
+            nn.Conv2d(50,25,3,stride=1,padding=1),
+            nn.BatchNorm2d(25),
+            nn.ReLU(True),
+
+            nn.Conv2d(25,1,2,stride=2),
+            nn.Tanh()
+        )
+    def forward(self,x):
+        x = self.fc(x)
+        x = x.view(x.size(0),1,56,56)
+        x = self.br(x)
+        x = self.gen(x)
+        return x
 
  # Setting Image Propertie
 
@@ -442,124 +378,95 @@ height = 256
 pixels = width * height * 1  # gray scale
 
 #此处需要修改
-initEpoch =89
+initEpoch =0
 num_epochs = 3000
 num_gepochs = 5
 batch_size = 80
 learning_rate = 1 * 1e-4
-useFineTune = True
+useFineTune = False
 multiGPU = True
 
 if __name__ == "__main__":
     count = initEpoch
     
-    dataset = DefectDataset('./DefectDataset/noise', './DefectDataset/gt', width, height)
+    dataset = DefectDataset('../DefectDataset/Single/noise', '../DefectDataset/Single/gt', width, height)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     
     ae_criterion = nn.BCELoss()
     d_criterion = nn.BCELoss()
-    e_criterion = nn.MSELoss()
 
-    netD = discriminator()  
-    netE = EncoderWithClassifier()
-    netG = Decoder()
+    D = discriminator()  
+    G = AEGenerator()
 
-
-    netD = netD.cuda()
-    netG = netG.cuda()
-    netE = netE.cuda()
+    D = D.cuda()
+    G = G.cuda()
 
     # model = Model()
     if(multiGPU): #if torch.cuda.device_count() > 1:
-        netD = nn.DataParallel(netD,device_ids=[0])
-        netG = nn.DataParallel(netG,device_ids=[0])
-        netE = nn.DataParallel(netE,device_ids=[0])
+        D = nn.DataParallel(D,device_ids=[0])
+        G = nn.DataParallel(G,device_ids=[0])
     else:
-        netD = nn.DataParallel(netD,device_ids=[0])
-        netG = nn.DataParallel(netG,device_ids=[0])
-        netE = nn.DataParallel(netE,device_ids=[0])
+        D = nn.DataParallel(D,device_ids=[0])
+        G = nn.DataParallel(G,device_ids=[0])
     
-    netD.to(device)
-    netG.to(device)
-    netE.to(device)
+    D.to(device)
+    G.to(device)
+    
 
+    summary(D,(1,256,256))
+    summary(G,(1,256,256))
 
-    summary(netD,(1,256,256))
-    summary(netG,(1,128))
-    summary(netE,(1,256,256))
-
-    d_optimizer = optim.Adam(netD.parameters(),lr=0.0003)
-    g_optimizer = torch.optim.Adam(netG.parameters(), lr=learning_rate,
-                             weight_decay=1e-5)
-    e_optimizer = torch.optim.Adam(netE.parameters(), lr=learning_rate,
+    d_optimizer = optim.Adam(D.parameters(),lr=0.0003)
+    g_optimizer = torch.optim.Adam(G.parameters(), lr=learning_rate,
                              weight_decay=1e-5)
 
     saved_dict_G = {
-        'model': netG.state_dict(),
+        'model': G.state_dict(),
         'opt': g_optimizer.state_dict()
     }
 
-    saved_dict_E = {
-        'model': netE.state_dict(),
-        'opt': e_optimizer.state_dict()
-    }
-
     saved_dict_D = {
-        'model': netD.state_dict(),
+        'model': D.state_dict(),
         'opt': d_optimizer.state_dict()
     }
 
     if(useFineTune):
-        checkpoint_d = torch.load('./Model_new/discriminator/aegan_epoch_88.pth')
-        checkpoint_g = torch.load('./Model_new/decoder/aegan_epoch_88.pth')
-        checkpoint_e = torch.load('./Model_new/encoder/aegan_epoch_88.pth')
+        checkpoint_d = torch.load('../Model/DIS/aegan_epoch_159.pth')
+        checkpoint_g = torch.load('../Model/GAN/aegan_epoch_159.pth')
         # here, checkpoint is a dict with the keys you defined before
-        netD.load_state_dict(checkpoint_d['model'])
+        D.load_state_dict(checkpoint_d['model'])
         d_optimizer.load_state_dict(checkpoint_d['opt'])
-        netG.load_state_dict(checkpoint_g['model'])
+        G.load_state_dict(checkpoint_g['model'])
         g_optimizer.load_state_dict(checkpoint_g['opt'])
-        netE.load_state_dict(checkpoint_e['model'])
-        e_optimizer.load_state_dict(checkpoint_e['opt'])
     else:
-        netD.apply(weights_init)
-        netG.apply(weights_init)
-        netE.apply(weights_init)
+        D.apply(weights_init)
+        G.apply(weights_init)
 
 
     for i in range(initEpoch, initEpoch+num_epochs):
         # for (img, label) in trainloader:
-        for (noise_img, gt_img, label_onehot) in dataloader:
+        for (noise_img, gt_img) in dataloader:
             
+
             noise_img = Variable(noise_img).cuda()
             gt_img = Variable(gt_img).cuda()
-            label_onehot = Variable(label_onehot).cuda()
-
 
             """ Update Classifier """
 
-            z_code,label_pre = netE(noise_img)
-            # label_pre = Variable(label_pre).cuda()
-            classifier_loss = e_criterion(label_pre,label_onehot)
-            e_optimizer.zero_grad()
-            # print("hi")
-            classifier_loss.backward()
-            # print("h2")
-            e_optimizer.step()
 
             """ Update Discriminator """ 
 
             real_label = Variable(torch.ones(gt_img.shape[0],1)).cuda()
             fake_label = Variable(torch.zeros(gt_img.shape[0],1)).cuda()
 
-            real_out = netD(gt_img)
+            real_out = D(gt_img)
             d_loss_real = d_criterion(real_out,real_label) ### d_loss_real = log(D(x))
             real_scores = real_out
 
-            z_code,label_pre = netE(noise_img)
-            fake_img = netG(z_code)
-            fake_out = netD(fake_img)
+            fake_img = G(noise_img)
+            fake_out = D(fake_img)
             d_loss_fake = d_criterion(fake_out,fake_label) ### d_loss_fake = log(1-D(G(x~)))
             fake_scores = fake_out
 
@@ -574,23 +481,20 @@ if __name__ == "__main__":
             for j in range(num_gepochs):               
                 # fake_label = Variable(torch.ones(batch_size)).cuda()
                 # z = Variable(torch.randn(num_img,z_dimension)).cuda()
-                z_code,label_pre = netE(noise_img)
-                fake_img = netG(z_code)
+                
+                fake_img = G(noise_img)
                 g_loss = ae_criterion(fake_img,gt_img)
                 g_optimizer.zero_grad()
-                e_optimizer.zero_grad()
                 g_loss.backward()
                 g_optimizer.step()
-                e_optimizer.step()
 
-        print('Epoch [{}/{}], e_loss: {:.6f}, d_loss: {:.6f}, g_loss: {:.6f} '
+        print('Epoch [{}/{}], d_loss: {:.6f}, g_loss: {:.6f} '
                   'D real: {:.6f}, D fake: {:.6f}'.format(
-                i, num_epochs, classifier_loss.data, d_loss.data, g_loss.data,
+                i, num_epochs, d_loss.data, g_loss.data,
                 real_scores.data.mean(), fake_scores.data.mean()))
 
-        torch.save(saved_dict_G, './Model_new/decoder/aegan_epoch_{}.pth'.format(i))
-        torch.save(saved_dict_D, './Model_new/discriminator/aegan_epoch_{}.pth'.format(i))
-        torch.save(saved_dict_E, './Model_new/encoder/aegan_epoch_{}.pth'.format(i))
+        torch.save(saved_dict_G, '../Model/GAN/aegan_epoch_{}.pth'.format(i))
+        torch.save(saved_dict_D, '../Model/DIS/aegan_epoch_{}.pth'.format(i))
         
         showimg(fake_img,count)
         # plt.show()

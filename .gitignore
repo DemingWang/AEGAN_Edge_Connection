@@ -1,8 +1,11 @@
 DefectDataset/gt/*
 DefectDataset/noise/*
 DefectDataset/Mutil-Model/*
+DefectDataset/Multi/*
+DefectDataset/Single/*
 Model/*
 Model_old/*
 Model_new/*
-Multi-Model/GAN_Image/*
-Multi-Model/Model/*
+Model_Multi/
+Multi-Model/*
+GAN_Image/*

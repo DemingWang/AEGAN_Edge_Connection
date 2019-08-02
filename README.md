@@ -5,22 +5,38 @@ This is Pytorch code for edge connection with GAN,in which a autoencoder structu
 # Folder Structure
 
 * DefectDataset
-    * gt
-    * noise
-    * background
-* GAN_Image  
+  * Single
+   * gt
+   * noise
+  * Multi
+   * gt
+    * 00
+    * 01
+    * ...
+   * noise
+    * 00
+    * 01
+    * ...
+  * background
+* GAN_Image
 * Model
     * DIS
     * GAN
+* Model_Multi
+    * model
 * Template
     * bin_contour
 * Test_Image
     * input
     * output
-* AAE.py
-* datasetGenerate.py
-* testAAE.py
-* region.py
+* src
+  * AAE.py
+  * AAEMultiModel.py
+  * AAEWithClassifier.py
+  * datasetGenerate.py
+  * testAAE.py
+  * testAAEWithClassifier.py
+  * region.py
 * README.md
 
 # Usage

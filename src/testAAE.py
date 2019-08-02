@@ -21,12 +21,12 @@ import cv2
 
 TestFlag = 1
 
-if not os.path.exists('./Test_Image'):
-    os.mkdir('./Test_Image')
-if not os.path.exists('./Test_Image/input'):
-    os.mkdir('./Test_Image/input')
-if not os.path.exists('./Test_Image/output'):
-    os.mkdir('./Test_Image/output')
+if not os.path.exists('../Test_Image'):
+    os.mkdir('../Test_Image')
+if not os.path.exists('../Test_Image/input'):
+    os.mkdir('../Test_Image/input')
+if not os.path.exists('../Test_Image/output'):
+    os.mkdir('../Test_Image/output')
  # Setting Image Propertie
 
 width = 256
@@ -44,7 +44,7 @@ x = []
 Testfolder = False
 #如果是读取某一个文件夹里的
 if(Testfolder):
-    img_dir = ("./Test_Image/input/")
+    img_dir = ("../Test_Image/input/")
     img_files = glob.glob(img_dir + "*.png")
     img_files.sort(key=lambda x:int(x[-6:-4]))
     print(img_files)
@@ -65,10 +65,10 @@ if(Testfolder):
         x.append(data)
 else:
     #如果是读取DefectDataset/noise文件夹下的某些图片
-    img_dir = ("./DefectDataset/noise/")
+    img_dir = ("../DefectDataset/Single/noise/")
     for tempID in range(0,27):
         selectNum = 0
-        img_filename = img_dir+"temp_{}_{}.png".format("%02d"%tempID,"%04d"%selectNum)
+        img_filename = img_dir+"temp_{}_{}.png".format(tempID,"%04d"%selectNum)
         print("Image Filename: ",img_filename)
         img = Image.open(img_filename)
         img = img.convert("L")
@@ -226,113 +226,26 @@ class AEGenerator_SK(nn.Module):
         x = x.view(x.size(0), 128, 8, 8)
         x = self.decoder(x)
         return x
-
-class EncoderWithClassifier(nn.Module):
-    def __init__(self):
-        super(EncoderWithClassifier, self).__init__()
-        self.encoder = nn.Sequential(
-            nn.Conv2d(1,32, 5, stride=2, padding=2),
-            nn.ReLU(True),# 64*128*128
-
-            nn.Conv2d(32,32, 5, stride=2, padding=2),
-            nn.ReLU(True),# 32*64*64
-
-            nn.Conv2d(32,64, 5, stride=2, padding=2),
-            nn.ReLU(True),# 64*32*32
-
-            nn.Conv2d(64,64, 5, stride=2, padding=2),
-            nn.ReLU(True),# 64*16*16
-
-            nn.Conv2d(64,128, 5, stride=2, padding=2),
-            nn.ReLU(True)# 128*8*8
-        )
-        self.fc1 = nn.Sequential(
-            nn.Linear(128*8*8, 128)
-        )
-        self.fc2 = nn.Sequential(
-            nn.Linear(128,27),
-            nn.Softmax()
-        )
-        self.fc3 = nn.Sequential(
-            nn.Linear(128,101),
-            nn.ReLU(True)
-        )
-        self.relu = nn.ReLU(False)
-        self.softmax = nn.Softmax()
-
-    def forward(self, x):
-        x = self.encoder(x)
-        x = x.view(x.size(0), -1)
-        x = self.fc1(x)
-        label = self.fc2(x)
-        code = self.fc3(x)
-        x = torch.cat((label,code),1)
-        return x,label
-
-
-class Decoder(nn.Module): ##这里的网络结构实际上是参考了Implicit3D的结构
-    def __init__(self):
-        super(Decoder, self).__init__()
-        self.fc2 = nn.Sequential(
-            nn.Linear(128, 128 * 8 * 8),
-            nn.ReLU(True)
-        )
-        self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(128, 64, 4, stride=2, padding=1),  # b, 16, 5, 5
-            nn.ReLU(True), # 256 * 16 * 16
-
-            nn.ConvTranspose2d(64, 64, 4, stride=2, padding=1),  # b, 16, 5, 5
-            nn.ReLU(True), # 256 * 32 * 32
-
-            nn.ConvTranspose2d(64, 32, 4, stride=2, padding=1),  # b, 16, 5, 5
-            nn.ReLU(True), # 128 * 64 * 64
-
-            nn.ConvTranspose2d(32, 32, 4, stride=2, padding=1),  # b, 16, 5, 5
-            nn.ReLU(True), # 64 * 128 * 128
-
-            nn.ConvTranspose2d(32, 1, 4, stride=2, padding=1),  # b, 16, 5, 5
-            nn.Sigmoid() # 1 * 256 * 256            
-        )
  
-    def forward(self, x):
-        x = self.fc2(x)
-        x = x.view(x.size(0), 128, 8, 8)
-        x = self.decoder(x)
-        return x
- 
-model_e = EncoderWithClassifier().cuda()
-model_g = Decoder().cuda()
+model = AEGenerator().cuda()
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 # model = Model()
 #if torch.cuda.device_count() > 1:
-model_e = nn.DataParallel(model_e,device_ids=[0])
-model_g = nn.DataParallel(model_g,device_ids=[0])
+model = nn.DataParallel(model,device_ids=[0])
 
-model_e.to(device)
-model_g.to(device)
+model.to(device)
 
 # model.load_state_dict(torch.load('./model/aug/conv_aae_epoch_2990.pth'))
  
-checkpoint_e = torch.load('./log/20190801/encoder/aegan_epoch_285.pth')
+checkpoint = torch.load('../Model_old/20190731/aegan_epoch_197.pth')
 # here, checkpoint is a dict with the keys you defined before
-model_e.load_state_dict(checkpoint_e['model'])
-
-
-checkpoint_g = torch.load('./log/20190801/decoder/aegan_epoch_285.pth')
-# here, checkpoint is a dict with the keys you defined before
-model_g.load_state_dict(checkpoint_g['model'])
-
+model.load_state_dict(checkpoint['model'])
 
 batch_test=torch.Tensor(x_test)
 img = Variable(batch_test).cuda()
 # ===================forward=====================
-z_code,label_pre = model_e(img)
-print(type(label_pre))
-np_label_pres = label_pre.cpu().data.numpy()
-labeloutput = [np.argmax(np_label_pre)for np_label_pre in np_label_pres]
-print(labeloutput)
-output = model_g(z_code)
+output = model(img)
 output_imgs = output.cpu().data.numpy()
 noise_imgs = img.cpu().data.numpy()
 # print(type(output_img))
@@ -346,8 +259,8 @@ noise_imgs = noise_imgs.transpose(0,2,3,1)
 
 for i,singleimg in enumerate(output_imgs):
 
-    cv2.imwrite("./Test_Image/output/{}_noise_de.png".format(i),singleimg)
-    cv2.imwrite("./Test_Image/output/{}_noise.png".format(i),noise_imgs[i])
+    cv2.imwrite("../Test_Image/output/{}_noise_de.png".format(i),singleimg)
+    cv2.imwrite("../Test_Image/output/{}_noise.png".format(i),noise_imgs[i])
     
 
  
