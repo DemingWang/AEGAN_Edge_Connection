@@ -314,12 +314,12 @@ model_g.to(device)
 
 # model.load_state_dict(torch.load('./model/aug/conv_aae_epoch_2990.pth'))
  
-checkpoint_e = torch.load('./log/20190801/encoder/aegan_epoch_200.pth')
+checkpoint_e = torch.load('./log/20190801/encoder/aegan_epoch_285.pth')
 # here, checkpoint is a dict with the keys you defined before
 model_e.load_state_dict(checkpoint_e['model'])
 
 
-checkpoint_g = torch.load('./log/20190801/decoder/aegan_epoch_200.pth')
+checkpoint_g = torch.load('./log/20190801/decoder/aegan_epoch_285.pth')
 # here, checkpoint is a dict with the keys you defined before
 model_g.load_state_dict(checkpoint_g['model'])
 
