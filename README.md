@@ -49,7 +49,7 @@ This is Pytorch code for edge connection with GAN,in which a autoencoder structu
 ## 1. Use AutoEncoder
 
 
-```
+```shell
 
 cd ./src
 
