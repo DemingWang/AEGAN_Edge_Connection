@@ -41,7 +41,7 @@ seq = iaa.Sequential([
 ])
 
 x = []
-Testfolder = False
+Testfolder = True
 #如果是读取某一个文件夹里的
 if(Testfolder):
     img_dir = ("../Test_Image/input/")
@@ -238,7 +238,7 @@ model.to(device)
 
 # model.load_state_dict(torch.load('./model/aug/conv_aae_epoch_2990.pth'))
  
-checkpoint = torch.load('../Model_old/20190731/aegan_epoch_197.pth')
+checkpoint = torch.load('../gan/aegan_epoch_350.pth')
 # here, checkpoint is a dict with the keys you defined before
 model.load_state_dict(checkpoint['model'])
 

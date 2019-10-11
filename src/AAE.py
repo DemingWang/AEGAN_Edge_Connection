@@ -14,7 +14,8 @@ from torch.utils.data import Dataset, DataLoader
 import matplotlib.gridspec as gridspec
 import os
 from PIL import Image
-
+import scipy.io as sio
+    
 
 # os.environ['CUDA_VISIBLE_DEVICES'] = "0,1"
 # According to the folder structure, the generator(autoencoder-decoder) training mode will be saved in ./Model/GAN and 
@@ -31,6 +32,12 @@ if not os.path.exists('../Model/GAN'):
 
 if not os.path.exists('../Model/DIS'):
     os.mkdir('../Model/DIS')
+
+if not os.path.exists('../log'):
+    os.mkdir('../log')
+
+if not os.path.exists('../log/loss'):
+    os.mkdir('../log/loss')
 
 #加入权重初始化函数
 def weights_init(m):
@@ -384,7 +391,9 @@ num_gepochs = 5
 batch_size = 80
 learning_rate = 1 * 1e-4
 useFineTune = False
-multiGPU = True
+multiGPU = False
+
+loss_save = [] # [[epoch,d_loss,g_loss,real_scores,fake_scores]]
 
 if __name__ == "__main__":
     count = initEpoch
@@ -495,6 +504,11 @@ if __name__ == "__main__":
 
         torch.save(saved_dict_G, '../Model/GAN/aegan_epoch_{}.pth'.format(i))
         torch.save(saved_dict_D, '../Model/DIS/aegan_epoch_{}.pth'.format(i))
+        
+        single_loss = [i, d_loss.data.cpu().numpy(), g_loss.data.cpu().numpy(), real_scores.data.mean().cpu().numpy(), fake_scores.data.mean().cpu().numpy()]
+        loss_save.append(single_loss)
+        loss_save_np = np.array(loss_save)
+        sio.savemat('../log/loss/loss.mat',{'loss':loss_save_np})
         
         showimg(fake_img,count)
         # plt.show()
